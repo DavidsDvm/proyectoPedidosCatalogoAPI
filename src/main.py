@@ -29,9 +29,9 @@ def getUsers(db: Session = Depends(get_db)):
 def searchUserByEmail(email: str, db: Session = Depends(get_db)):
     userExist = db.query(User).filter(User.user_email == email).first()
     if userExist:
-        return 'true'
+        return 'True'
     else:
-        return 'false'
+        return 'False'
 
 @app.get("/api/user/{email}/{password}")
 def searchUserByCredentials(email: str, password: str ,db: Session = Depends(get_db)):
@@ -63,4 +63,4 @@ if __name__ == "__main__":
 
     port = int(os.environ.get('PORT', 5000))
 
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
