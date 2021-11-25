@@ -40,7 +40,7 @@ def upgrade():
         sa.Column('cookware_dimentions', sa.String, nullable=False),
         sa.Column('cookware_description', sa.String, nullable=False),
         sa.Column('cookware_availability', sa.Boolean, nullable=False),
-        sa.Column('cookware_price', sa.Integer, nullable=False),
+        sa.Column('cookware_price', sa.Float, nullable=False),
         sa.Column('cookware_quantity', sa.Integer, nullable=False),
         sa.Column('cookware_photo', sa.String, nullable=False)
     )
