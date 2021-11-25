@@ -20,12 +20,33 @@ def upgrade():
     op.create_table(
         'user',
         sa.Column('id', sa.Integer, primary_key=True),
-        sa.Column('user_email', sa.String, nullable=False, unique=True),
+        sa.Column('user_identification', sa.String, unique=True, nullable=False),
         sa.Column('user_namevarchar', sa.String, nullable=False),
-        sa.Column('user_passwordvarchar', sa.String, nullable=False)
+        sa.Column('user_address', sa.String, nullable=False),
+        sa.Column('user_cellphone', sa.String, nullable=False),
+        sa.Column('user_email', sa.String, nullable=False, unique=True),
+        sa.Column('user_passwordvarchar', sa.String, nullable=False),
+        sa.Column('user_zone', sa.String, nullable=False),
+        sa.Column('user_type', sa.String, nullable=False)
+    )
+
+    op.create_table(
+        'cookware',
+        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('cookware_reference', sa.String, nullable=False),
+        sa.Column('cookware_brand', sa.String, nullable=False),
+        sa.Column('cookware_category', sa.String, nullable=False),
+        sa.Column('cookware_material', sa.String, nullable=False),
+        sa.Column('cookware_dimentions', sa.String, nullable=False),
+        sa.Column('cookware_description', sa.String, nullable=False),
+        sa.Column('cookware_availability', sa.Boolean, nullable=False),
+        sa.Column('cookware_price', sa.Integer, nullable=False),
+        sa.Column('cookware_quantity', sa.Integer, nullable=False),
+        sa.Column('cookware_photo', sa.String, nullable=False)
     )
 
 
 
 def downgrade():
     op.drop_table('user')
+    op.drop_table('cookware')
