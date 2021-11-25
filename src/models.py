@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Boolean
+from sqlalchemy import Integer, String, Boolean, Float
 from sqlalchemy.sql.schema import Column
 from .database import Base
 
@@ -36,7 +36,7 @@ class Cookware(Base):
     cookware_dimentions = Column(String(100), nullable=False)
     cookware_description = Column(String(250), nullable=False)
     cookware_availability = Column(Boolean, nullable=False)
-    cookware_price = Column(Integer, nullable=False)
+    cookware_price = Column(Float, nullable=False)
     cookware_quantity = Column(Integer, nullable=False)
     cookware_photo = Column(String(255), nullable=False)
 
