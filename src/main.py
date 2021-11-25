@@ -38,9 +38,9 @@ def getUsers(db: Session = Depends(get_db)):
 def searchUserByEmail(email: str, db: Session = Depends(get_db)):
     userExist = db.query(User).filter(User.user_email == email).first()
     if userExist:
-        return 'true'
+        return 'True'
     else:
-        return 'false'
+        return 'False'
 
 @app.get("/api/user/{email}/{password}")
 def searchUserByCredentials(email: str, password: str ,db: Session = Depends(get_db)):
