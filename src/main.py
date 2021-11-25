@@ -153,7 +153,7 @@ def updateCookware(details: CreateCookwareRequest, response: Response, db: Sessi
         to_update.cookware_brand = details.brand
         to_update.cookware_category = details.category
         to_update.cookware_material = details.materiales
-        to_update.cookware_dimension = details.dimensiones
+        to_update.cookware_dimentions = details.dimensiones
         to_update.cookware_description = details.description
         to_update.cookware_availability = details.availability
         to_update.cookware_price = details.price
