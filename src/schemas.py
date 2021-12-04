@@ -26,3 +26,11 @@ class CreateCookwareRequest(BaseModel):
     price: int
     quantity: int
     photography: str
+
+class CreateOrderRequest(BaseModel):
+    id: int
+    registerDay: datetime
+    status: str
+    salesMan: dict
+    products: dict
+    quantities: dict
