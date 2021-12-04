@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
@@ -5,6 +6,8 @@ class CreateUserRequest(BaseModel):
     id: int
     identification: str
     name: str
+    birthtDay: datetime
+    monthBirthtDay: str
     address: str
     cellPhone: str
     email: str
