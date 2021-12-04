@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from .schemas import CreateUserRequest, CreateCookwareRequest
 from .database import get_db
 from .models import User, Cookware
+from datetime import datetime
 import uvicorn
 import os
 
@@ -24,7 +25,9 @@ def getUsers(db: Session = Depends(get_db)):
         data = {}
         data["id"]=user.id
         data["identification"] = user.user_identification
-        data["name"]= user.user_namevarchar
+        data["name"] = user.user_namevarchar
+        data["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+        data["monthBirthtDay"] = user.user_monthBirthday
         data["address"] = user.user_address
         data["cellPhone"] = user.user_cellphone
         data["email"] = user.user_email
@@ -33,6 +36,24 @@ def getUsers(db: Session = Depends(get_db)):
         data["type"] = user.user_type
         all_data.append(data)
     return all_data
+
+@app.get("/api/user/{id}")
+def getUserById(id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == id).first()
+    if user:
+        data = {}
+        data["id"]=user.id
+        data["identification"] = user.user_identification
+        data["name"] = user.user_namevarchar
+        data["birthtDay"] = (str(user.user_birthday)).replace(" ", "_") + ".000+00:00"
+        data["monthBirthtDay"] = user.user_monthBirthday
+        data["address"] = user.user_address
+        data["cellPhone"] = user.user_cellphone
+        data["email"] = user.user_email
+        data["password"] = user.user_passwordvarchar
+        data["zone"] = user.user_zone
+        data["type"] = user.user_type
+        return data
 
 @app.get("/api/user/emailexist/{email}")
 def searchUserByEmail(email: str, db: Session = Depends(get_db)):
@@ -51,6 +72,8 @@ def searchUserByCredentials(email: str, password: str ,db: Session = Depends(get
         data["id"]=userExist.id
         data["identification"] = userExist.user_identification
         data["name"]= userExist.user_namevarchar
+        data["birthtDay"] = str(userExist.user_birthday) + ".000+00:00"
+        data["monthBirthtDay"] = userExist.user_monthBirthday
         data["address"] = userExist.user_address
         data["cellPhone"] = userExist.user_cellphone
         data["email"] = userExist.user_email
@@ -63,6 +86,8 @@ def searchUserByCredentials(email: str, password: str ,db: Session = Depends(get
         data["id"] = None
         data["identification"] = None
         data["name"]= None
+        data["birthtDay"] = None
+        data["monthBirthtDay"] = None
         data["address"] = None
         data["cellPhone"] = None
         data["email"] = None
@@ -75,7 +100,10 @@ def searchUserByCredentials(email: str, password: str ,db: Session = Depends(get
 
 @app.post("/api/user/new", status_code=201)
 def newUser(details: CreateUserRequest, db: Session = Depends(get_db)):
-    to_create = User(details.identification, details.name, details.address, details.cellPhone, details.email, details.password, details.zone, details.type)
+    dateBirthday = (str(details.birthtDay)).split('+')[0]
+    dateBirthdayAdd = datetime.strptime(dateBirthday, '%Y-%m-%d %H:%M:%S')
+
+    to_create = User(details.id, details.identification, details.name, dateBirthdayAdd, details.monthBirthtDay, details.address, details.cellPhone, details.email, details.password, details.zone, details.type)
     db.add(to_create)
     db.commit()
     return []
@@ -88,6 +116,8 @@ def updateUser(details: CreateUserRequest, response: Response, db: Session = Dep
     if to_update:
         to_update.user_identification = details.identification
         to_update.user_namevarchar = details.name
+        to_update.user_birthday = details.birthtDay
+        to_update.user_monthBirthday = details.monthBirthtDay
         to_update.user_address = details.address
         to_update.user_cellphone = details.cellPhone
         to_update.user_email = details.email
