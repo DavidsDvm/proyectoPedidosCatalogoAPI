@@ -19,9 +19,11 @@ depends_on = None
 def upgrade():
     op.create_table(
         'user',
-        sa.Column('id', sa.Integer, primary_key=True),
+        sa.Column('id', sa.Integer, primary_key=True, autoincrement=False),
         sa.Column('user_identification', sa.String, unique=True, nullable=False),
         sa.Column('user_namevarchar', sa.String, nullable=False),
+        sa.Column('user_birthday', sa.DateTime, nullable=False),
+        sa.Column('user_monthBirthday', sa.String, nullable=False),
         sa.Column('user_address', sa.String, nullable=False),
         sa.Column('user_cellphone', sa.String, nullable=False),
         sa.Column('user_email', sa.String, nullable=False, unique=True),
