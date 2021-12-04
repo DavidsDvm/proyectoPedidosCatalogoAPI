@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Depends, Response, status
 from sqlalchemy.orm import Session
-from .schemas import CreateUserRequest, CreateCookwareRequest
+from sqlalchemy import desc
+from .schemas import CreateUserRequest, CreateCookwareRequest, CreateOrderRequest
 from .database import get_db
-from .models import User, Cookware
+from .models import User, Cookware, Order, CookwareAndOrder
 from datetime import datetime
 import uvicorn
 import os
@@ -45,7 +46,7 @@ def getUserById(id: int, db: Session = Depends(get_db)):
         data["id"]=user.id
         data["identification"] = user.user_identification
         data["name"] = user.user_namevarchar
-        data["birthtDay"] = (str(user.user_birthday)).replace(" ", "_") + ".000+00:00"
+        data["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
         data["monthBirthtDay"] = user.user_monthBirthday
         data["address"] = user.user_address
         data["cellPhone"] = user.user_cellphone
@@ -103,7 +104,7 @@ def newUser(details: CreateUserRequest, db: Session = Depends(get_db)):
     dateBirthday = (str(details.birthtDay)).split('+')[0]
     dateBirthdayAdd = datetime.strptime(dateBirthday, '%Y-%m-%d %H:%M:%S')
 
-    to_create = User(details.id, details.identification, details.name, dateBirthdayAdd, details.monthBirthtDay, details.address, details.cellPhone, details.email, details.password, details.zone, details.type)
+    to_create = User(details.id, details.identification, details.name, dateBirthdayAdd, details.monthBirthtDay, details.address, details.cellPhone, details.email, details.password, details.zone, details.type, None)
     db.add(to_create)
     db.commit()
     return []
@@ -168,7 +169,7 @@ def getCookware(db: Session = Depends(get_db)):
 
 @app.post("/api/cookware/new", status_code=201)
 def newCookware(details: CreateCookwareRequest, db: Session = Depends(get_db)):
-    to_create = Cookware(details.reference, details.brand, details.category, details.materiales, details.dimensiones, details.description, details.availability, details.price, details.quantity, details.photography)
+    to_create = Cookware(details.reference, details.brand, details.category, details.materiales, details.dimensiones, details.description, details.availability, details.price, details.quantity, details.photography, None, None)
     db.add(to_create)
     db.commit()
     return []
@@ -207,6 +208,119 @@ def deleteCookware(reference: str, response: Response, db: Session = Depends(get
     else:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return []
+
+# Order API -- GET methods
+
+@app.get("/api/order/all")
+def getOrder(db: Session = Depends(get_db)):
+    all_order = db.query(Order).all()
+    all_data = []
+    for order in all_order:
+        data = {}
+        data["id"] = order.id
+        data["registerDay"] = (str(order.order_register)).replace(" ", "T") + ".000+00:00"
+        data["status"] = order.order_status
+        
+        # User data get for SalesMan
+        user = db.query(User).filter(User.order_id == order.id).first()
+        userData = {}
+        userData["id"]= user.id
+        userData["identification"] = user.user_identification
+        userData["name"] = user.user_namevarchar
+        userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+        userData["monthBirthtDay"] = user.user_monthBirthday
+        userData["address"] = user.user_address
+        userData["cellPhone"] = user.user_cellphone
+        userData["email"] = user.user_email
+        userData["password"] = user.user_passwordvarchar
+        userData["zone"] = user.user_zone
+        userData["type"] = user.user_type
+            
+
+        # Cookware data get for products
+        cookwareDataQuery = db.query(Cookware).filter(Cookware.order_id == order.id).order_by(Cookware.cookware_reference.desc()).all()
+        cookwareAllData = {}
+        for cookware in cookwareDataQuery:
+            cookwareData = {}
+            cookwareData["reference"] = cookware.cookware_reference
+            cookwareData["brand"] = cookware.cookware_brand
+            cookwareData["category"]= cookware.cookware_category
+            cookwareData["materiales"] = cookware.cookware_material
+            cookwareData["dimensiones"] = cookware.cookware_dimentions
+            cookwareData["description"] = cookware.cookware_description
+            cookwareData["availability"] = cookware.cookware_availability
+            cookwareData["price"] = cookware.cookware_price
+            cookwareData["quantity"] = cookware.cookware_quantity
+            cookwareData["photography"] = cookware.cookware_photo
+            cookwareAllData[cookware.cookware_reference] = cookwareData
+
+        # Quantity data get for quantities
+        cookwareDataQuery = db.query(Cookware).filter(Cookware.order_id == order.id).order_by(Cookware.cookware_reference.desc()).all()
+        productQuantity = {}
+        for cookware in cookwareDataQuery:
+            productQuantity[cookware.cookware_reference] = cookware.order_quantity
+
+        data["salesMan"] = userData
+        data["products"] = cookwareAllData
+        data["quantities"] = productQuantity
+        print(data)
+        all_data.append(data)
+    return all_data
+
+# Order API -- POST methods
+@app.post("/api/order/new", status_code=201)
+def newOrder(details: CreateOrderRequest, response: Response, db: Session = Depends(get_db)):
+    # Date and time problem solution
+    dateBirthday = (str(details.registerDay)).split('+')[0]
+    dateBirthdayAdd = datetime.strptime(dateBirthday, '%Y-%m-%d %H:%M:%S')
+
+    salesMan = db.query(User).filter(User.id == details.salesMan["id"]).first()
+    to_create = Order(details.id, dateBirthdayAdd, details.status)
+    
+    db.add(to_create)
+    db.commit()
+    
+    # SalesMan data
+
+    if salesMan:
+        salesMan.order_id = to_create.id
+    else: 
+        db.delete(to_create)
+        db.commit()
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return [{"error": "Salesman not found"}]
+    
+    # Cookware data
+
+    for product in details.products:
+        cookware = db.query(Cookware).filter(Cookware.cookware_reference == product).first()
+        if cookware:
+            cookware.order_id = to_create.id
+        else: 
+            db.delete(to_create)
+            db.commit()
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return [{"error": "Cookware not found"}]
+
+    for quantity in details.quantities:
+        cookware = db.query(Cookware).filter(Cookware.cookware_reference == quantity).first()
+        if cookware:
+            cookware.order_quantity = details.quantities[quantity]
+        else: 
+            db.delete(to_create)
+            db.commit()
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return [{"error": "Cookware not found"}]
+    
+    try:
+        db.commit()
+    except:
+        db.rollback()
+        db.commit()
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return [{"error": "Error creating order"}]
+
+    return []
 
 # Run the server
 
