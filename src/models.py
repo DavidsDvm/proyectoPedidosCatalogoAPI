@@ -1,13 +1,15 @@
-from sqlalchemy import Integer, String, Boolean, Float
+from sqlalchemy import Integer, String, Boolean, Float, DateTime 
 from sqlalchemy.sql.schema import Column
 from .database import Base
 
 class User(Base):
     __tablename__ = 'user'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=False)
     user_identification = Column(String(50), unique=True, nullable=False)
     user_namevarchar = Column(String(80), nullable=False)
+    user_birthday = Column(DateTime, nullable=False)
+    user_monthBirthday = Column(String(20), nullable=False)
     user_address = Column(String(80), nullable=False)
     user_cellphone = Column(String(20), nullable=False)
     user_email = Column(String(50), nullable=False, unique=True)
@@ -15,9 +17,12 @@ class User(Base):
     user_zone = Column(String(20), nullable=False)
     user_type = Column(String(20), nullable=False)
 
-    def __init__(self, user_identification, user_namevarchar, user_address, user_cellphone, user_email, user_passwordvarchar, user_zone, user_type):
+    def __init__(self, id, user_identification, user_namevarchar, user_birthday, user_monthBirthday,user_address, user_cellphone, user_email, user_passwordvarchar, user_zone, user_type):
+        self.id = id
         self.user_identification = user_identification
         self.user_namevarchar = user_namevarchar
+        self.user_birthday = user_birthday
+        self.user_monthBirthday = user_monthBirthday
         self.user_address = user_address
         self.user_cellphone = user_cellphone
         self.user_email = user_email
