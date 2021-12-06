@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from .schemas import CreateUserRequest, CreateCookwareRequest, CreateOrderRequest
 from .database import get_db
-from .models import User, Cookware, Order, CookwareAndOrder
+from .models import User, Cookware, Order, CookwareAndOrder, UserAndOrder
 from datetime import datetime
 import uvicorn
 import os
@@ -21,6 +21,7 @@ def root():
 @app.get("/api/user/all")
 def getUsers(db: Session = Depends(get_db)):
     all_users = db.query(User).all()
+    print(all_users)
     all_data = []
     for user in all_users:
         data = {}
@@ -104,7 +105,7 @@ def newUser(details: CreateUserRequest, db: Session = Depends(get_db)):
     dateBirthday = (str(details.birthtDay)).split('+')[0]
     dateBirthdayAdd = datetime.strptime(dateBirthday, '%Y-%m-%d %H:%M:%S')
 
-    to_create = User(details.id, details.identification, details.name, dateBirthdayAdd, details.monthBirthtDay, details.address, details.cellPhone, details.email, details.password, details.zone, details.type, None)
+    to_create = User(details.id, details.identification, details.name, dateBirthdayAdd, details.monthBirthtDay, details.address, details.cellPhone, details.email, details.password, details.zone, details.type)
     db.add(to_create)
     db.commit()
     return []
@@ -169,7 +170,7 @@ def getCookware(db: Session = Depends(get_db)):
 
 @app.post("/api/cookware/new", status_code=201)
 def newCookware(details: CreateCookwareRequest, db: Session = Depends(get_db)):
-    to_create = Cookware(details.reference, details.brand, details.category, details.materiales, details.dimensiones, details.description, details.availability, details.price, details.quantity, details.photography, None, None)
+    to_create = Cookware(details.reference, details.brand, details.category, details.materiales, details.dimensiones, details.description, details.availability, details.price, details.quantity, details.photography)
     db.add(to_create)
     db.commit()
     return []
@@ -220,54 +221,58 @@ def getOrder(db: Session = Depends(get_db)):
         data["id"] = order.id
         data["registerDay"] = (str(order.order_register)).replace(" ", "T") + ".000+00:00"
         data["status"] = order.order_status
-        
+
         # User data get for SalesMan
-        user = db.query(User).filter(User.order_id == order.id).first()
-        userData = {}
-        userData["id"]= user.id
-        userData["identification"] = user.user_identification
-        userData["name"] = user.user_namevarchar
-        userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
-        userData["monthBirthtDay"] = user.user_monthBirthday
-        userData["address"] = user.user_address
-        userData["cellPhone"] = user.user_cellphone
-        userData["email"] = user.user_email
-        userData["password"] = user.user_passwordvarchar
-        userData["zone"] = user.user_zone
-        userData["type"] = user.user_type
+
+        for user in order.orderUser:    
+            user = db.query(User).filter(User.id == user.user_id).first()
+            userData = {}
+            userData["id"]= user.id
+            userData["identification"] = user.user_identification
+            userData["name"] = user.user_namevarchar
+            userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+            userData["monthBirthtDay"] = user.user_monthBirthday
+            userData["address"] = user.user_address
+            userData["cellPhone"] = user.user_cellphone
+            userData["email"] = user.user_email
+            userData["password"] = user.user_passwordvarchar
+            userData["zone"] = user.user_zone
+            userData["type"] = user.user_type
             
 
         # Cookware data get for products
-        cookwareDataQuery = db.query(Cookware).filter(Cookware.order_id == order.id).order_by(Cookware.cookware_reference.desc()).all()
         cookwareAllData = {}
-        for cookware in cookwareDataQuery:
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+
             cookwareData = {}
-            cookwareData["reference"] = cookware.cookware_reference
-            cookwareData["brand"] = cookware.cookware_brand
-            cookwareData["category"]= cookware.cookware_category
-            cookwareData["materiales"] = cookware.cookware_material
-            cookwareData["dimensiones"] = cookware.cookware_dimentions
-            cookwareData["description"] = cookware.cookware_description
-            cookwareData["availability"] = cookware.cookware_availability
-            cookwareData["price"] = cookware.cookware_price
-            cookwareData["quantity"] = cookware.cookware_quantity
-            cookwareData["photography"] = cookware.cookware_photo
-            cookwareAllData[cookware.cookware_reference] = cookwareData
+            cookwareData["reference"] = cookwareDataQuery.cookware_reference
+            cookwareData["brand"] = cookwareDataQuery.cookware_brand
+            cookwareData["category"]= cookwareDataQuery.cookware_category
+            cookwareData["materiales"] = cookwareDataQuery.cookware_material
+            cookwareData["dimensiones"] = cookwareDataQuery.cookware_dimentions
+            cookwareData["description"] = cookwareDataQuery.cookware_description
+            cookwareData["availability"] = cookwareDataQuery.cookware_availability
+            cookwareData["price"] = cookwareDataQuery.cookware_price
+            cookwareData["quantity"] = cookwareDataQuery.cookware_quantity
+            cookwareData["photography"] = cookwareDataQuery.cookware_photo
+            cookwareAllData[cookwareDataQuery.cookware_reference] = cookwareData
 
         # Quantity data get for quantities
-        cookwareDataQuery = db.query(Cookware).filter(Cookware.order_id == order.id).order_by(Cookware.cookware_reference.desc()).all()
         productQuantity = {}
-        for cookware in cookwareDataQuery:
-            productQuantity[cookware.cookware_reference] = cookware.order_quantity
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+            
+            productQuantity[cookwareDataQuery.cookware_reference] = cookware.order_quantity
 
         data["salesMan"] = userData
         data["products"] = cookwareAllData
         data["quantities"] = productQuantity
-        print(data)
         all_data.append(data)
     return all_data
 
 # Order API -- POST methods
+
 @app.post("/api/order/new", status_code=201)
 def newOrder(details: CreateOrderRequest, response: Response, db: Session = Depends(get_db)):
     # Date and time problem solution
@@ -283,7 +288,8 @@ def newOrder(details: CreateOrderRequest, response: Response, db: Session = Depe
     # SalesMan data
 
     if salesMan:
-        salesMan.order_id = to_create.id
+        newSalesMan = UserAndOrder(salesMan.id, to_create.id)
+        db.add(newSalesMan)
     else: 
         db.delete(to_create)
         db.commit()
@@ -295,17 +301,12 @@ def newOrder(details: CreateOrderRequest, response: Response, db: Session = Depe
     for product in details.products:
         cookware = db.query(Cookware).filter(Cookware.cookware_reference == product).first()
         if cookware:
-            cookware.order_id = to_create.id
-        else: 
-            db.delete(to_create)
-            db.commit()
-            response.status_code = status.HTTP_400_BAD_REQUEST
-            return [{"error": "Cookware not found"}]
+            for quantity in details.quantities:
+                if cookware.cookware_reference == quantity:
+                    orderQuantity = details.quantities[quantity]
+                    newOrderCookware = CookwareAndOrder(cookware.cookware_reference, to_create.id, orderQuantity)
 
-    for quantity in details.quantities:
-        cookware = db.query(Cookware).filter(Cookware.cookware_reference == quantity).first()
-        if cookware:
-            cookware.order_quantity = details.quantities[quantity]
+                    db.add(newOrderCookware)
         else: 
             db.delete(to_create)
             db.commit()
