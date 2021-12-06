@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, Response, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from .schemas import CreateUserRequest, CreateCookwareRequest, CreateOrderRequest
+from .schemas import CreateUserRequest, CreateCookwareRequest, CreateOrderRequest, EditOrderRequest
 from .database import get_db
 from .models import User, Cookware, Order, CookwareAndOrder, UserAndOrder
 from datetime import datetime
@@ -166,6 +166,24 @@ def getCookware(db: Session = Depends(get_db)):
         all_data.append(data)
     return all_data
 
+@app.get("/api/cookware/{reference}")
+def getCookwareById(reference: str, db: Session = Depends(get_db)):
+    all_cookware = db.query(Cookware).filter(Cookware.cookware_reference == reference).first()
+
+    data = {}
+    data["reference"] = all_cookware.cookware_reference
+    data["brand"] = all_cookware.cookware_brand
+    data["category"]= all_cookware.cookware_category
+    data["materiales"] = all_cookware.cookware_material
+    data["dimensiones"] = all_cookware.cookware_dimentions
+    data["description"] = all_cookware.cookware_description
+    data["availability"] = all_cookware.cookware_availability
+    data["price"] = all_cookware.cookware_price
+    data["quantity"] = all_cookware.cookware_quantity
+    data["photography"] = all_cookware.cookware_photo
+
+    return data
+
 # Cookware API -- POST methods
 
 @app.post("/api/cookware/new", status_code=201)
@@ -271,6 +289,127 @@ def getOrder(db: Session = Depends(get_db)):
         all_data.append(data)
     return all_data
 
+@app.get("/api/order/zona/{zona}")
+def getOrderByZone(zona: str, db: Session = Depends(get_db)):
+    all_order = db.query(Order).all()
+    all_data = []
+    for order in all_order:
+        data = {}
+        data["id"] = order.id
+        data["registerDay"] = (str(order.order_register)).replace(" ", "T") + ".000+00:00"
+        data["status"] = order.order_status
+
+        # User data get for SalesMan
+
+        for user in order.orderUser:    
+            user = db.query(User).filter(User.id == user.user_id).first()
+
+            userData = {}
+            userData["id"]= user.id
+            userData["identification"] = user.user_identification
+            userData["name"] = user.user_namevarchar
+            userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+            userData["monthBirthtDay"] = user.user_monthBirthday
+            userData["address"] = user.user_address
+            userData["cellPhone"] = user.user_cellphone
+            userData["email"] = user.user_email
+            userData["password"] = user.user_passwordvarchar
+            userData["zone"] = user.user_zone
+            userData["type"] = user.user_type
+            
+        # Cookware data get for products
+        cookwareAllData = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+
+            cookwareData = {}
+            cookwareData["reference"] = cookwareDataQuery.cookware_reference
+            cookwareData["brand"] = cookwareDataQuery.cookware_brand
+            cookwareData["category"]= cookwareDataQuery.cookware_category
+            cookwareData["materiales"] = cookwareDataQuery.cookware_material
+            cookwareData["dimensiones"] = cookwareDataQuery.cookware_dimentions
+            cookwareData["description"] = cookwareDataQuery.cookware_description
+            cookwareData["availability"] = cookwareDataQuery.cookware_availability
+            cookwareData["price"] = cookwareDataQuery.cookware_price
+            cookwareData["quantity"] = cookwareDataQuery.cookware_quantity
+            cookwareData["photography"] = cookwareDataQuery.cookware_photo
+            cookwareAllData[cookwareDataQuery.cookware_reference] = cookwareData
+
+        # Quantity data get for quantities
+        productQuantity = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+            
+            productQuantity[cookwareDataQuery.cookware_reference] = cookware.order_quantity
+
+        data["salesMan"] = userData
+        data["products"] = cookwareAllData
+        data["quantities"] = productQuantity
+        # Check if the zone is the same as the zone of the user
+        if userData["zone"] != zona:
+            continue
+        else:
+            all_data.append(data)
+    return all_data
+
+@app.get("/api/order/{id}")
+def getOrderById(id: int, db: Session = Depends(get_db)):
+    all_order = db.query(Order).filter(Order.id == id).first()
+
+    data = {}
+    data["id"] = all_order.id
+    data["registerDay"] = (str(all_order.order_register)).replace(" ", "T") + ".000+00:00"
+    data["status"] = all_order.order_status
+
+    # User data get for SalesMan
+
+    for user in all_order.orderUser:    
+        user = db.query(User).filter(User.id == user.user_id).first()
+
+        userData = {}
+        userData["id"]= user.id
+        userData["identification"] = user.user_identification
+        userData["name"] = user.user_namevarchar
+        userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+        userData["monthBirthtDay"] = user.user_monthBirthday
+        userData["address"] = user.user_address
+        userData["cellPhone"] = user.user_cellphone
+        userData["email"] = user.user_email
+        userData["password"] = user.user_passwordvarchar
+        userData["zone"] = user.user_zone
+        userData["type"] = user.user_type
+        
+    # Cookware data get for products
+    cookwareAllData = {}
+    for cookware in all_order.orderCookware:
+        cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+
+        cookwareData = {}
+        cookwareData["reference"] = cookwareDataQuery.cookware_reference
+        cookwareData["brand"] = cookwareDataQuery.cookware_brand
+        cookwareData["category"]= cookwareDataQuery.cookware_category
+        cookwareData["materiales"] = cookwareDataQuery.cookware_material
+        cookwareData["dimensiones"] = cookwareDataQuery.cookware_dimentions
+        cookwareData["description"] = cookwareDataQuery.cookware_description
+        cookwareData["availability"] = cookwareDataQuery.cookware_availability
+        cookwareData["price"] = cookwareDataQuery.cookware_price
+        cookwareData["quantity"] = cookwareDataQuery.cookware_quantity
+        cookwareData["photography"] = cookwareDataQuery.cookware_photo
+        cookwareAllData[cookwareDataQuery.cookware_reference] = cookwareData
+
+    # Quantity data get for quantities
+    productQuantity = {}
+    for cookware in all_order.orderCookware:
+        cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+        
+        productQuantity[cookwareDataQuery.cookware_reference] = cookware.order_quantity
+
+    data["salesMan"] = userData
+    data["products"] = cookwareAllData
+    data["quantities"] = productQuantity
+
+    return data
+
 # Order API -- POST methods
 
 @app.post("/api/order/new", status_code=201)
@@ -320,6 +459,21 @@ def newOrder(details: CreateOrderRequest, response: Response, db: Session = Depe
         db.commit()
         response.status_code = status.HTTP_400_BAD_REQUEST
         return [{"error": "Error creating order"}]
+
+    return []
+
+# Order API -- PUT methods
+
+@app.put("/api/order/update", status_code=201)
+def updateOrder(details: EditOrderRequest, response: Response, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.id == details.id).first()\
+    
+    if order:
+        order.order_status = details.status
+        db.commit()
+    else:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return [{"error": "Order not found"}]
 
     return []
 
