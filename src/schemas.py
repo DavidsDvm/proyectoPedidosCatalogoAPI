@@ -34,3 +34,7 @@ class CreateOrderRequest(BaseModel):
     salesMan: dict
     products: dict
     quantities: dict
+
+class EditOrderRequest(BaseModel):
+    id: int
+    status: str
