@@ -3,6 +3,21 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import Column, ForeignKey, Table
 from .database import Base
 
+# Many to many realation beetween User and Order
+class UserAndOrder(Base):
+    __tablename__ = 'user_and_order'
+
+    user_id = Column(ForeignKey('user.id'), primary_key=True)
+    order_id = Column(ForeignKey('order.id'), primary_key=True)
+
+    # Realtions
+    user = relationship("User", back_populates="userOrder")
+    order = relationship("Order", back_populates="orderUser")
+
+    def __init__(self, user_id, order_id):
+        self.user_id = user_id
+        self.order_id = order_id
+
 class User(Base):
     __tablename__ = 'user'
 
@@ -22,9 +37,9 @@ class User(Base):
     user_type = Column(String(20), nullable=False)
 
     # foreign keys
-    order_id = Column(Integer, ForeignKey('order.id'))
+    userOrder = relationship("UserAndOrder", back_populates="user")
 
-    def __init__(self, id, user_identification, user_namevarchar, user_birthday, user_monthBirthday,user_address, user_cellphone, user_email, user_passwordvarchar, user_zone, user_type, order_id):
+    def __init__(self, id, user_identification, user_namevarchar, user_birthday, user_monthBirthday,user_address, user_cellphone, user_email, user_passwordvarchar, user_zone, user_type):
         self.id = id
         self.user_identification = user_identification
         self.user_namevarchar = user_namevarchar
@@ -36,18 +51,23 @@ class User(Base):
         self.user_passwordvarchar = user_passwordvarchar
         self.user_zone = user_zone
         self.user_type = user_type
-        self.order_id = order_id
 
-# Many to many relation between Cookware and Order
+# Many to many relation beetween Cookware and Order
 class CookwareAndOrder(Base):
     __tablename__ = 'cookware_and_order'
 
-    cookware_reference = Column(Integer, ForeignKey('cookware.cookware_reference'), primary_key=True)
-    order_id = Column(Integer, ForeignKey('order.id'), primary_key=True)
+    cookware_reference = Column(ForeignKey('cookware.cookware_reference'), primary_key=True)
+    order_id = Column(ForeignKey('order.id'), primary_key=True)
+    order_quantity = Column(Integer, nullable=True)
 
-    def __init__(self, cookware_reference, order_id):
+    # Realtions
+    cookware = relationship("Cookware", back_populates="cookwareOrder")
+    order = relationship("Order", back_populates="orderCookware")
+
+    def __init__(self, cookware_reference, order_id, order_quantity):
         self.cookware_reference = cookware_reference
         self.order_id = order_id
+        self.order_quantity = order_quantity
 
 class Cookware(Base):
     __tablename__ = 'cookware'
@@ -67,10 +87,9 @@ class Cookware(Base):
     cookware_photo = Column(String(255), nullable=False)
 
     # foreign keys
-    order_quantity = Column(Integer, nullable=True) # This is not a foreign key but its necesarry to create the relationship between the tables
-    order_id = Column(Integer, ForeignKey('order.id'))
+    cookwareOrder = relationship("CookwareAndOrder", back_populates="cookware")
 
-    def __init__(self, cookware_reference, cookware_brand, cookware_category, cookware_material, cookware_dimentions, cookware_description, cookware_availability, cookware_price, cookware_quantity, cookware_photo, order_quantity, order_id):
+    def __init__(self, cookware_reference, cookware_brand, cookware_category, cookware_material, cookware_dimentions, cookware_description, cookware_availability, cookware_price, cookware_quantity, cookware_photo):
         self.cookware_reference = cookware_reference
         self.cookware_brand = cookware_brand
         self.cookware_category = cookware_category
@@ -81,8 +100,6 @@ class Cookware(Base):
         self.cookware_price = cookware_price
         self.cookware_quantity = cookware_quantity
         self.cookware_photo = cookware_photo
-        self.order_quantity = order_quantity
-        self.order_id = order_id
 
 class Order(Base):
     __tablename__ = 'order'
@@ -95,8 +112,8 @@ class Order(Base):
     order_status = Column(String(50), nullable=False)
 
     # foreign keys
-    children = relationship("User")
-    children2 = relationship("Cookware")
+    orderUser = relationship("UserAndOrder", back_populates="order")
+    orderCookware = relationship("CookwareAndOrder", back_populates="order")
     
     def __init__(self, id, order_register, order_status):
         self.id = id
