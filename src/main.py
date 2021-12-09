@@ -4,7 +4,7 @@ from sqlalchemy import desc
 from .schemas import CreateUserRequest, CreateCookwareRequest, CreateOrderRequest, EditOrderRequest
 from .database import get_db
 from .models import User, Cookware, Order, CookwareAndOrder, UserAndOrder
-from datetime import datetime
+from datetime import date, datetime
 import uvicorn
 import os
 
@@ -352,6 +352,7 @@ def getOrderByZone(zona: str, db: Session = Depends(get_db)):
             all_data.append(data)
     return all_data
 
+# Filter the order by id
 @app.get("/api/order/{id}")
 def getOrderById(id: int, db: Session = Depends(get_db)):
     all_order = db.query(Order).filter(Order.id == id).first()
@@ -409,6 +410,204 @@ def getOrderById(id: int, db: Session = Depends(get_db)):
     data["quantities"] = productQuantity
 
     return data
+
+# Filter the order by salesman id
+@app.get("/api/order/salesman/{id}")
+def getOrderBySalesman(id: int, db: Session = Depends(get_db)):
+    
+    all_order = db.query(Order).all()
+
+    all_data = []
+    for order in all_order:
+        data = {}
+        data["id"] = order.id
+        data["registerDay"] = (str(order.order_register)).replace(" ", "T") + ".000+00:00"
+        data["status"] = order.order_status
+
+        # User data get for SalesMan
+
+        for user in order.orderUser:    
+            user = db.query(User).filter(User.id == user.user_id).first()
+
+            userData = {}
+            userData["id"]= user.id
+            userData["identification"] = user.user_identification
+            userData["name"] = user.user_namevarchar
+            userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+            userData["monthBirthtDay"] = user.user_monthBirthday
+            userData["address"] = user.user_address
+            userData["cellPhone"] = user.user_cellphone
+            userData["email"] = user.user_email
+            userData["password"] = user.user_passwordvarchar
+            userData["zone"] = user.user_zone
+            userData["type"] = user.user_type
+            
+        # Cookware data get for products
+        cookwareAllData = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+
+            cookwareData = {}
+            cookwareData["reference"] = cookwareDataQuery.cookware_reference
+            cookwareData["brand"] = cookwareDataQuery.cookware_brand
+            cookwareData["category"]= cookwareDataQuery.cookware_category
+            cookwareData["materiales"] = cookwareDataQuery.cookware_material
+            cookwareData["dimensiones"] = cookwareDataQuery.cookware_dimentions
+            cookwareData["description"] = cookwareDataQuery.cookware_description
+            cookwareData["availability"] = cookwareDataQuery.cookware_availability
+            cookwareData["price"] = cookwareDataQuery.cookware_price
+            cookwareData["quantity"] = cookwareDataQuery.cookware_quantity
+            cookwareData["photography"] = cookwareDataQuery.cookware_photo
+            cookwareAllData[cookwareDataQuery.cookware_reference] = cookwareData
+
+        # Quantity data get for quantities
+        productQuantity = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+            
+            productQuantity[cookwareDataQuery.cookware_reference] = cookware.order_quantity
+
+        data["salesMan"] = userData
+        data["products"] = cookwareAllData
+        data["quantities"] = productQuantity
+        # if the salesman id is different of the route id, the order is not added
+        if userData["id"] != id:
+            continue
+        else:
+            all_data.append(data)
+    return all_data
+
+# Filter the order by status and salesman id
+@app.get("/api/order/state/{state}/{id}")
+def getOrderByStatusAndSalesman(state: str, id: int, db: Session = Depends(get_db)):
+    all_order = db.query(Order).filter(Order.order_status == state).all()
+
+    all_data = []
+    for order in all_order:
+        data = {}
+        data["id"] = order.id
+        data["registerDay"] = (str(order.order_register)).replace(" ", "T") + ".000+00:00"
+        data["status"] = order.order_status
+
+        # User data get for SalesMan
+
+        for user in order.orderUser:    
+            user = db.query(User).filter(User.id == user.user_id).first()
+
+            userData = {}
+            userData["id"]= user.id
+            userData["identification"] = user.user_identification
+            userData["name"] = user.user_namevarchar
+            userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+            userData["monthBirthtDay"] = user.user_monthBirthday
+            userData["address"] = user.user_address
+            userData["cellPhone"] = user.user_cellphone
+            userData["email"] = user.user_email
+            userData["password"] = user.user_passwordvarchar
+            userData["zone"] = user.user_zone
+            userData["type"] = user.user_type
+            
+        # Cookware data get for products
+        cookwareAllData = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+
+            cookwareData = {}
+            cookwareData["reference"] = cookwareDataQuery.cookware_reference
+            cookwareData["brand"] = cookwareDataQuery.cookware_brand
+            cookwareData["category"]= cookwareDataQuery.cookware_category
+            cookwareData["materiales"] = cookwareDataQuery.cookware_material
+            cookwareData["dimensiones"] = cookwareDataQuery.cookware_dimentions
+            cookwareData["description"] = cookwareDataQuery.cookware_description
+            cookwareData["availability"] = cookwareDataQuery.cookware_availability
+            cookwareData["price"] = cookwareDataQuery.cookware_price
+            cookwareData["quantity"] = cookwareDataQuery.cookware_quantity
+            cookwareData["photography"] = cookwareDataQuery.cookware_photo
+            cookwareAllData[cookwareDataQuery.cookware_reference] = cookwareData
+
+        # Quantity data get for quantities
+        productQuantity = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+            
+            productQuantity[cookwareDataQuery.cookware_reference] = cookware.order_quantity
+
+        data["salesMan"] = userData
+        data["products"] = cookwareAllData
+        data["quantities"] = productQuantity
+        # if the salesman id is different of the route id, the order is not added
+        if userData["id"] != id:
+            continue
+        else:
+            all_data.append(data)
+    return all_data
+
+# Filter the order by date and salesman id
+@app.get("/api/order/date/{date}/{id}")
+def getOrderByDateAndSalesman(date: date, id: int, db: Session = Depends(get_db)):
+    all_order = db.query(Order).all()
+
+    all_data = []
+    for order in all_order:
+        data = {}
+        data["id"] = order.id
+        data["registerDay"] = (str(order.order_register)).replace(" ", "T") + ".000+00:00"
+        data["status"] = order.order_status
+
+        # User data get for SalesMan
+
+        for user in order.orderUser:    
+            user = db.query(User).filter(User.id == user.user_id).first()
+            userData = {}
+            userData["id"]= user.id
+            userData["identification"] = user.user_identification
+            userData["name"] = user.user_namevarchar
+            userData["birthtDay"] = (str(user.user_birthday)).replace(" ", "T") + ".000+00:00"
+            userData["monthBirthtDay"] = user.user_monthBirthday
+            userData["address"] = user.user_address
+            userData["cellPhone"] = user.user_cellphone
+            userData["email"] = user.user_email
+            userData["password"] = user.user_passwordvarchar
+            userData["zone"] = user.user_zone
+            userData["type"] = user.user_type
+            
+
+        # Cookware data get for products
+        cookwareAllData = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+
+            cookwareData = {}
+            cookwareData["reference"] = cookwareDataQuery.cookware_reference
+            cookwareData["brand"] = cookwareDataQuery.cookware_brand
+            cookwareData["category"]= cookwareDataQuery.cookware_category
+            cookwareData["materiales"] = cookwareDataQuery.cookware_material
+            cookwareData["dimensiones"] = cookwareDataQuery.cookware_dimentions
+            cookwareData["description"] = cookwareDataQuery.cookware_description
+            cookwareData["availability"] = cookwareDataQuery.cookware_availability
+            cookwareData["price"] = cookwareDataQuery.cookware_price
+            cookwareData["quantity"] = cookwareDataQuery.cookware_quantity
+            cookwareData["photography"] = cookwareDataQuery.cookware_photo
+            cookwareAllData[cookwareDataQuery.cookware_reference] = cookwareData
+
+        # Quantity data get for quantities
+        productQuantity = {}
+        for cookware in order.orderCookware:
+            cookwareDataQuery = db.query(Cookware).filter(Cookware.cookware_reference == cookware.cookware_reference).order_by(Cookware.cookware_reference.desc()).first()
+            
+            productQuantity[cookwareDataQuery.cookware_reference] = cookware.order_quantity
+
+        data["salesMan"] = userData
+        data["products"] = cookwareAllData
+        data["quantities"] = productQuantity
+
+        # if the salesman id is different of the route id, the order is not added
+        # also if the order register date is different of the route date, the order is not added
+        if userData["id"] != id or order.order_register.strftime("%Y-%m-%d") != str(date):
+            continue
+        else:
+            all_data.append(data)
+    return all_data
 
 # Order API -- POST methods
 
